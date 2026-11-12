@@ -27,12 +27,35 @@ Open:
 ```bash
 sudo dnf install -y git || sudo apt-get install -y git
 git clone https://github.com/Sherlock2019/Devopsprojectsdemo-DzoanNguyen.git saife && cd saife
-./start.sh --install --public   # installs Node.js 20 if missing, binds 0.0.0.0, prints http://<public-ip>:3510
+./start.sh --install --public --tls   # Node.js 20 if missing, binds 0.0.0.0, HTTPS (self-signed), prints https://<public-ip>:3510
 ```
 
 - A t3.small (or larger) is enough.
-- In the instance Security Group, open inbound **TCP 3510 to your IP only**. The UI has no login.
-- Alternative without opening the port: run `./start.sh`, then from your laptop run `ssh -L 3510:127.0.0.1:3510 ec2-user@<ec2-ip>` and browse http://127.0.0.1:3510.
+- In the instance Security Group, open inbound **TCP 3510 to your IP only**. The trading UI and ops console have no login; only the mobile app does.
+- `--tls` creates a self-signed certificate for the public IP in `.run/tls/`. The browser warns once (Advanced → Proceed). Without `--tls`, traffic, including passwords, is unencrypted.
+- Alternative without opening the port: run `./start.sh`, then from your laptop run `ssh -L 3510:127.0.0.1:3510 ubuntu@<ec2-ip>` (`ec2-user@` on Amazon Linux) and browse http://127.0.0.1:3510. This is also the only way to try passkeys, which browsers block on a raw IP address.
+
+## Mobile app (`/mobile`)
+
+A phone-sized customer app: a phone frame on desktop, full screen on a real phone. Sign in with **demo / SaifeDemo!2026** (set `MOBILE_DEMO_PASSWORD` to change it; the hint is then hidden). It trades and withdraws on its own account `cust-1` through the same engine, Guardian and custody controls as the web UI.
+
+First sign-in asks you to set up an authenticator. Enter the setup key in Google or Microsoft Authenticator, 1Password or Authy, or tap **Add to the demo authenticator**, which shows codes in a side panel (a drawer on phones). Save the 8 recovery codes; you need one to report a lost phone.
+
+| Layer | What the server enforces (`mobile-api.js`) |
+|---|---|
+| Customer identity | Password (scrypt) + TOTP (RFC 6238, each code works once) or a WebAuthn passkey with user verification. 5 failures → 5 min lockout + Guardian alert. |
+| Session protection | Server-side session, HttpOnly SameSite=Strict cookie (Secure under TLS), CSRF token, ID rotated after MFA. **Locks after 60 s without interaction**; polling doesn't count. Unlock needs MFA. |
+| Lost-device response | "Lost or stolen phone?" on the sign-in screen: password + recovery code → every session ended, devices marked lost, passkeys removed, authenticator reset, withdrawals frozen, case `LOST_DEVICE_REPORTED` opened. A reviewer closing the case (Ops Console) lifts the freeze. Re-enrolment needs another recovery code, so a stolen password is not enough. |
+| Authorization | Scopes per session state (MFA pending / enrolment / active / locked). The account always comes from the session; a body field such as `acct: "trader-1"` is ignored. |
+| Trading protection | Engine guardrails: tick/lot, ±5% band, max value, rate limit, atomic reservation, idempotent `clientOrderId` (confirm button disabled after one tap, optional retry demo). |
+| Withdrawal protection | Fresh TOTP per withdrawal, allowlisted destinations only, new addresses wait 60 s (24 h in production), per-tx caps, $25,000 daily limit, then Guardian screening and the mock signer. |
+| Data and secrets | User store `.run/mobile-users.json` is AES-256-GCM encrypted (key from `SAIFE_DATA_KEY` or `.run/data.key`, mode 0600). Recovery codes and session tokens are stored only as hashes. Strict CSP, `X-Frame-Options: DENY`, nosniff, HSTS under TLS. |
+| Audit and monitoring | Every auth, lock, device, address and withdrawal event goes to Ops Console → Audit as `cust:demo`. |
+| Device attestation (optional) | Browser signals (automation flag, emulator hints, user-agent drift, plain HTTP, new IP) give a risk score; ≥ 60 blocks withdrawals and opens a case. A native app would use App Attest or Play Integrity. |
+
+Security → **Live security checks** sends real attack-style requests (no CSRF token, someone else's account, duplicate order, unknown address, no step-up, over limit) and shows each refusal. Reset the mobile users with `./start.sh --stop && rm .run/mobile-users.json`.
+
+Tunables: `MOBILE_IDLE_MS` (60000), `MOBILE_ALLOWLIST_COOLDOWN_MS` (60000), `MOBILE_DAILY_LIMIT_USD` (25000), `MOBILE_DEMO_PASSWORD`, `SAIFE_DATA_KEY` (64 hex chars).
 - The server keeps running after you log out (`nohup`). Stop it with `./start.sh --stop`.
 
 Press **▶ Run demo** on either page. The guided demo takes about 75 s and resets the simulation first:
@@ -74,6 +97,9 @@ Press **▶ Run demo** on either page. The guided demo takes about 75 s and rese
 
 ```bash
 npm run smoke                       # 20 end-to-end checks (orders, idempotency, guardrails, withdrawals, attacks, recon, /metrics)
+# 44 mobile security checks; needs a fresh user store and short timers:
+SAIFE_RUN_DIR=$(mktemp -d) MOBILE_IDLE_MS=6000 MOBILE_ALLOWLIST_COOLDOWN_MS=3000 PORT=3599 node server.js &
+node scripts/mobile-smoke.mjs http://127.0.0.1:3599
 node scripts/loadtest.mjs 500 20    # real HTTP load: 500 req/s for 20 s
 ```
 
@@ -93,5 +119,8 @@ server.js            engine + simulation + HTTP/SSE API
 public/index.html    trading UI          public/trade.js
 public/ops.html      ops console         public/ops.js
 public/common.js     helpers + charts    public/style.css
+mobile-api.js        mobile auth/security API (/api/m/*)
+public/mobile.html   mobile app mockup   public/mobile.js  public/mobile.css  public/totp.js
+scripts/mobile-smoke.mjs  mobile security checks
 scripts/smoke.mjs    end-to-end checks   scripts/loadtest.mjs  HTTP load test
 ```

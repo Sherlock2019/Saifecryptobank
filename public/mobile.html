@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0e11">
+<meta name="referrer" content="no-referrer">
+<title>SAIFE Mobile</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fcd535' d='M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z'/></svg>">
+<link rel="stylesheet" href="/mobile.css">
+</head>
+<body>
+<div class="stage">
+
+  <!-- Desktop only: which security layers this mockup enforces -->
+  <aside class="side side-left" aria-label="Security layers">
+    <div class="side-head">
+      <div class="side-brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z"/></svg>SAIFE <span>Mobile mockup</span></div>
+      <p class="side-sub">Each layer below is either enforced by this server, simulated, or partial. Tap one to see how.</p>
+      <div class="legend"><span class="chip live">Live</span><span class="chip partial">Partial</span><span class="chip sim">Simulated</span></div>
+    </div>
+    <ol class="layers" id="layers"></ol>
+    <div class="side-links"><a href="/">Trading UI</a><a href="/ops.html#audit">Ops Console · Audit</a><a href="/ops.html#attack">Ops · Review queue</a></div>
+  </aside>
+
+  <!-- The phone -->
+  <div class="device">
+    <div class="phone" id="phone">
+      <div class="statusbar" aria-hidden="true"><span id="sbTime">9:41</span><span class="notch"></span><span class="sb-icons"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="app" id="app">
+
+        <!-- LOGIN -->
+        <section class="screen" id="scrLogin" data-screen="login">
+          <div class="login-hero">
+            <div class="logo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z"/></svg></div>
+            <h1>SAIFE</h1>
+            <p class="muted">Crypto bank &amp; exchange</p>
+          </div>
+          <form id="loginForm" class="form" autocomplete="on" novalidate>
+            <label class="fld"><span>Username</span><input id="loginUser" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>
+            <label class="fld"><span>Password</span><input id="loginPw" name="password" type="password" autocomplete="current-password" required></label>
+            <div class="msg" id="loginMsg" role="alert"></div>
+            <button class="btn primary block" type="submit" id="loginBtn">Sign in</button>
+          </form>
+          <button class="link-btn" type="button" data-go="lost">Lost or stolen phone?</button>
+          <div class="hint" id="demoHint" hidden>
+            <b>Demo account</b> · username <code id="hintUser"></code> · password <code id="hintPw"></code>
+            <button class="mini" type="button" id="hintFill">Fill in</button>
+          </div>
+          <div class="foot"><span class="conn" id="connBadge"></span><span>Simulation · no real funds</span></div>
+        </section>
+
+        <!-- MFA -->
+        <section class="screen" id="scrMfa" data-screen="mfa" hidden>
+          <header class="bar"><button class="icon-btn" type="button" data-action="cancel-login" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Two-step verification</h2></header>
+          <div class="pad">
+            <div class="shield"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <div id="mfaTotpBox">
+              <p class="lead">Enter the 6-digit code from your authenticator app.</p>
+              <p class="note" id="mfaNewDevice" hidden>New device detected. After you verify, it becomes a trusted device on your account.</p>
+              <form id="mfaForm" class="form" novalidate>
+                <input class="otp" id="mfaCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="••••••" aria-label="6-digit code">
+                <div class="msg" id="mfaMsg" role="alert"></div>
+                <button class="btn primary block" type="submit">Verify</button>
+              </form>
+              <button class="btn ghost block" type="button" id="mfaPasskeyBtn" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="4"/><path d="M3 20c0-3.3 2.7-6 6-6M15 13a3 3 0 106 0 3 3 0 00-6 0zM18 16v5l1.5-1.5"/></svg>Use a passkey</button>
+              <button class="link-btn" type="button" id="mfaUseRecovery">Lost your authenticator? Use a recovery code</button>
+            </div>
+            <div id="mfaRecoveryBox" hidden>
+              <p class="lead" id="mfaRecoveryLead">Enter one of your recovery codes. You'll then set up a new authenticator.</p>
+              <form id="recoveryForm" class="form" novalidate>
+                <input class="otp rc" id="recoveryCode" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxx-xxxxx" aria-label="Recovery code">
+                <div class="msg" id="recoveryMsg" role="alert"></div>
+                <button class="btn primary block" type="submit">Continue</button>
+              </form>
+              <button class="link-btn" type="button" id="mfaUseTotp">Use authenticator code instead</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ENROL -->
+        <section class="screen" id="scrEnroll" data-screen="enroll" hidden>
+          <header class="bar"><button class="icon-btn" type="button" data-action="cancel-login" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Protect your account</h2></header>
+          <div class="pad" id="enrollStep1">
+            <ol class="steps"><li class="on">Add key</li><li>Verify</li><li>Save codes</li></ol>
+            <p class="lead">Turn on two-step verification. In your authenticator app (Google or Microsoft Authenticator, 1Password, Authy), choose <b>Enter a setup key</b>, type <b>time-based</b>.</p>
+            <div class="keybox"><span class="lbl">Setup key</span><code id="enrollKey">…</code></div>
+            <div class="row2">
+              <button class="btn ghost" type="button" id="enrollCopy">Copy key</button>
+              <a class="btn ghost" id="enrollOpen" href="#">Open authenticator</a>
+            </div>
+            <button class="btn soft block" type="button" id="enrollDemo">Add to the demo authenticator</button>
+            <p class="note">No phone handy? The demo authenticator <span class="desk-only">on the right</span><span class="mob-only">(key button, bottom right)</span> shows codes for this key, like an authenticator app would.</p>
+            <form id="enrollForm" class="form" novalidate>
+              <label class="fld"><span>Enter the 6-digit code it shows</span><input class="otp" id="enrollCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••"></label>
+              <div class="msg" id="enrollMsg" role="alert"></div>
+              <button class="btn primary block" type="submit">Verify and turn on</button>
+            </form>
+          </div>
+          <div class="pad" id="enrollStep2" hidden>
+            <ol class="steps"><li class="done">Add key</li><li class="done">Verify</li><li class="on">Save codes</li></ol>
+            <p class="lead">Save these recovery codes. Each works once. You need one to report a lost phone or to set up a new authenticator.</p>
+            <div class="codes" id="recoveryCodes"></div>
+            <button class="btn ghost block" type="button" id="codesCopy">Copy codes</button>
+            <label class="chk"><input type="checkbox" id="codesSaved"> I've stored them somewhere safe (not on this phone)</label>
+            <button class="btn primary block" type="button" id="codesDone" disabled>Continue</button>
+          </div>
+        </section>
+
+        <!-- LOST DEVICE (public) -->
+        <section class="screen" id="scrLost" data-screen="lost" hidden>
+          <header class="bar"><button class="icon-btn" type="button" data-go="login" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button><h2>Report a lost device</h2></header>
+          <div class="pad" id="lostFormBox">
+            <div class="alert-card bad">
+              <b>What happens</b>
+              <ul><li>Every device is signed out</li><li>Passkeys are removed</li><li>Withdrawals are frozen until our team reviews</li><li>Your balances and open orders stay as they are</li></ul>
+            </div>
+            <form id="lostForm" class="form" novalidate>
+              <label class="fld"><span>Username</span><input id="lostUser" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+              <label class="fld"><span>Password</span><input id="lostPw" type="password" autocomplete="current-password"></label>
+              <div class="seg" id="lostMethod" role="tablist"><button type="button" class="on" data-m="recovery">Recovery code</button><button type="button" data-m="totp">Authenticator code</button></div>
+              <label class="fld"><span id="lostCodeLbl">Recovery code</span><input id="lostCode" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="xxxxx-xxxxx"></label>
+              <p class="note" id="lostCodeNote">Using a recovery code also resets your authenticator, since it was probably on the lost phone.</p>
+              <label class="chk"><input type="checkbox" id="lostConfirm"> Sign out everywhere and freeze withdrawals</label>
+              <div class="msg" id="lostMsg" role="alert"></div>
+              <button class="btn danger block" type="submit" id="lostBtn" disabled>Report device lost</button>
+            </form>
+          </div>
+          <div class="pad" id="lostResult" hidden>
+            <div class="big-ok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <h3 class="center">Your account is secured</h3>
+            <ul class="checks" id="lostChecks"></ul>
+            <p class="note" id="lostNext"></p>
+            <button class="btn primary block" type="button" data-go="login">Back to sign in</button>
+          </div>
+        </section>
+
+        <!-- MAIN APP -->
+        <section class="screen main" id="scrMain" data-screen="main" hidden>
+          <header class="appbar">
+            <div class="who"><div class="avatar" id="avatar">D</div><div><div class="hello" id="hello">Hi</div><div class="sub" id="authMethod">Signed in</div></div></div>
+            <button class="idle" type="button" id="idleBtn" aria-label="Session lock timer. Tap to lock now">
+              <svg viewBox="0 0 36 36" aria-hidden="true"><circle class="trk" cx="18" cy="18" r="15"/><circle class="val" id="idleArc" cx="18" cy="18" r="15"/></svg>
+              <span id="idleSec">60</span>
+            </button>
+          </header>
+          <div class="banners" id="banners"></div>
+          <div class="views" id="views">
+
+            <!-- HOME -->
+            <div class="view" id="vHome" data-view="home">
+              <div class="card hero-card">
+                <div class="lbl">Total balance</div>
+                <div class="big num" id="pfTotal">$–</div>
+                <div class="sub num" id="pfSub"></div>
+                <div class="quick">
+                  <button type="button" data-quick="buy"><i class="qi up"></i>Buy</button>
+                  <button type="button" data-quick="sell"><i class="qi down"></i>Sell</button>
+                  <button type="button" data-quick="withdraw"><i class="qi out"></i>Send</button>
+                  <button type="button" data-quick="security"><i class="qi lock"></i>Security</button>
+                </div>
+              </div>
+              <h4 class="sec">Markets</h4>
+              <div class="list" id="mktList"></div>
+              <h4 class="sec">Assets</h4>
+              <div class="list" id="assetList"></div>
+              <h4 class="sec">Recent activity</h4>
+              <div class="list" id="recentList"></div>
+            </div>
+
+            <!-- TRADE -->
+            <div class="view" id="vTrade" data-view="trade" hidden>
+              <div class="seg mkts" id="tMarket"><button type="button" class="on" data-m="BTCUSDT">BTC/USDT</button><button type="button" data-m="ETHUSDT">ETH/USDT</button></div>
+              <div class="px-head"><div class="px num" id="tPx">–</div><div class="chg num" id="tChg"></div></div>
+              <div class="card">
+                <div class="seg side" id="tSide"><button type="button" class="on buy" data-s="BUY">Buy</button><button type="button" class="sell" data-s="SELL">Sell</button></div>
+                <div class="seg small" id="tType"><button type="button" class="on" data-t="MARKET">Market</button><button type="button" data-t="LIMIT">Limit</button></div>
+                <label class="fld" id="tPriceFld" hidden><span>Price (USDT)</span><input id="tPrice" inputmode="decimal" autocomplete="off"></label>
+                <label class="fld"><span>Amount (<b id="tBase">BTC</b>)</span><input id="tQty" inputmode="decimal" autocomplete="off" value="0.001"></label>
+                <div class="pct" id="tPct"><button type="button" data-p="25">25%</button><button type="button" data-p="50">50%</button><button type="button" data-p="75">75%</button><button type="button" data-p="100">Max</button></div>
+                <div class="kv"><span>Available</span><span class="num" id="tAvail">–</span></div>
+                <div class="kv"><span>Estimated total</span><span class="num" id="tTotal">–</span></div>
+                <button class="btn buy block" type="button" id="tSubmit">Review buy</button>
+              </div>
+              <h4 class="sec">Open orders</h4>
+              <div class="list" id="openList"></div>
+              <h4 class="sec">Order history</h4>
+              <div class="list" id="histList"></div>
+            </div>
+
+            <!-- WALLET -->
+            <div class="view" id="vWallet" data-view="wallet" hidden>
+              <div class="card">
+                <h3>Send crypto</h3>
+                <label class="fld"><span>Asset</span><select id="wAsset"><option>BTC</option><option>ETH</option><option>USDC</option></select></label>
+                <label class="fld"><span>To (allowlisted address)</span><select id="wAddr"></select></label>
+                <label class="fld"><span>Amount <b class="muted" id="wAvail"></b></span><input id="wAmt" inputmode="decimal" autocomplete="off" value="0.01"></label>
+                <div class="meter"><div class="meter-top"><span>Daily limit</span><span class="num" id="wLimitTxt">–</span></div><div class="bar-track"><div class="bar-fill" id="wLimitBar"></div></div></div>
+                <div class="kv"><span>Per-transaction cap</span><span class="num" id="wPerTx">–</span></div>
+                <div class="msg" id="wMsg" role="alert"></div>
+                <button class="btn primary block" type="button" id="wSubmit">Continue</button>
+                <p class="note">Every withdrawal needs a new authenticator code, then goes through AI Guardian screening and the custody signer.</p>
+              </div>
+              <div class="card">
+                <div class="card-head"><h3>Address allowlist</h3><button class="mini" type="button" id="addrAdd">+ Add</button></div>
+                <div class="list flat" id="addrList"></div>
+              </div>
+              <h4 class="sec">Withdrawals</h4>
+              <div class="list" id="wdList"></div>
+              <div class="card">
+                <h3>Custody</h3>
+                <p class="note">Each asset and network has its own hot-wallet compartment with an exposure cap. Cold storage holds the rest. Top-ups need two independent approvals.</p>
+                <div class="list flat" id="custList"></div>
+              </div>
+            </div>
+
+            <!-- SECURITY -->
+            <div class="view" id="vSecurity" data-view="security" hidden>
+              <div class="card">
+                <div class="card-head"><h3>This session</h3><span class="chip live" id="sesState">Active</span></div>
+                <div class="kv"><span>Signed in with</span><span id="sesAmr">–</span></div>
+                <div class="kv"><span>Started</span><span id="sesStart">–</span></div>
+                <div class="kv"><span>Auto-lock</span><span id="sesIdle">60 s idle (server-enforced)</span></div>
+                <div class="kv"><span>Connection</span><span id="sesConn">–</span></div>
+                <div class="row2"><button class="btn ghost" type="button" data-action="lock">Lock now</button><button class="btn ghost" type="button" data-action="logout">Sign out</button></div>
+              </div>
+              <div class="card">
+                <h3>Sign-in methods</h3>
+                <div class="item"><div class="ic ok"></div><div class="grow"><div>Authenticator app</div><div class="sub" id="mfaTotpState">On</div></div></div>
+                <div class="item"><div class="ic ok"></div><div class="grow"><div>Recovery codes</div><div class="sub" id="mfaRcState">–</div></div></div>
+                <div class="list flat" id="pkList"></div>
+                <button class="btn ghost block" type="button" id="pkAdd">Add a passkey</button>
+                <p class="note" id="pkNote" hidden></p>
+              </div>
+              <div class="card">
+                <h3>Devices</h3>
+                <div class="list flat" id="devList"></div>
+              </div>
+              <div class="card danger-card">
+                <h3>Lost your phone?</h3>
+                <p class="note">From any browser, open this app and tap <b>Lost or stolen phone?</b> on the sign-in screen. You'll need your password and a recovery code.</p>
+                <button class="btn danger block" type="button" id="lostFromApp">Report a device lost now</button>
+              </div>
+              <div class="card">
+                <div class="card-head"><h3>Live security checks</h3><button class="mini" type="button" id="runChecks">Run</button></div>
+                <p class="note">Sends real attack-style requests to the server and shows what it refused.</p>
+                <div class="list flat" id="checkList"></div>
+              </div>
+              <div class="card">
+                <h3>Security activity</h3>
+                <div class="list flat" id="evList"></div>
+              </div>
+              <div class="card mob-layers">
+                <h3>Security layers</h3>
+                <ol class="layers" id="layersMob"></ol>
+              </div>
+            </div>
+          </div>
+          <nav class="tabbar" id="tabbar">
+            <button type="button" class="on" data-tab="home"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 01-1 1h-5v-6H9v6H4a1 1 0 01-1-1z"/></svg><span>Home</span></button>
+            <button type="button" data-tab="trade"><svg viewBox="0 0 24 24"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></svg><span>Trade</span></button>
+            <button type="button" data-tab="wallet"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M16 13h2M3 10h18M6 6l9-3 1 3"/></svg><span>Wallet</span></button>
+            <button type="button" data-tab="security"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.5-3 7.7-7 9-4-1.3-7-4.5-7-9V6z"/></svg><span>Security</span></button>
+          </nav>
+        </section>
+
+        <!-- LOCK overlay (server-enforced) -->
+        <div class="lock" id="lock" hidden>
+          <div class="lock-in">
+            <div class="lock-ic"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></div>
+            <h3>Session locked</h3>
+            <p class="muted" id="lockWhy">Locked after 60 s of inactivity. The server paused your session; verify to continue.</p>
+            <form id="unlockForm" class="form" novalidate>
+              <input class="otp" id="unlockCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" aria-label="6-digit code">
+              <div class="msg" id="unlockMsg" role="alert"></div>
+              <button class="btn primary block" type="submit">Unlock</button>
+            </form>
+            <button class="btn ghost block" type="button" id="unlockPasskey" hidden>Unlock with passkey</button>
+            <button class="link-btn" type="button" data-action="logout">Sign out</button>
+          </div>
+        </div>
+
+        <!-- bottom sheet -->
+        <div class="sheet-wrap" id="sheetWrap" hidden><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+        <div class="toast" id="toast" role="status" hidden></div>
+      </div>
+      <div class="homebar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <!-- Desktop: demo authenticator + live events. Phone: drawer opened by the key button. -->
+  <aside class="side side-right" id="sideRight" aria-label="Demo authenticator">
+    <div class="auth-card">
+      <div class="auth-head"><span>Demo authenticator</span><button class="icon-btn sm close-drawer" type="button" id="drawerClose" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div id="authEmpty"><p class="muted">Stands in for an authenticator app on another device. Not set up yet. On the enrolment screen, tap <b>Add to the demo authenticator</b>.</p></div>
+      <div id="authFull" hidden>
+        <div class="auth-acct" id="authAcct">SAIFE · demo</div>
+        <button class="auth-code num" type="button" id="authCode" title="Copy">––– –––</button>
+        <div class="auth-timer"><div class="bar-track"><div class="bar-fill" id="authBar"></div></div><span id="authSecs">30 s</span></div>
+        <div class="row2"><button class="mini" type="button" id="authFill">Paste into app</button><button class="mini" type="button" id="authRemove">Remove</button></div>
+        <p class="note">Kept in this browser's storage only. Codes work once each, so after using one, wait for the next.</p>
+      </div>
+    </div>
+    <div class="ev-card">
+      <div class="auth-head"><span>Security events</span><span class="muted" id="evCount"></span></div>
+      <ol class="ev-feed" id="evFeed"><li class="muted">Sign in to see events.</li></ol>
+    </div>
+  </aside>
+</div>
+<button class="key-fab" type="button" id="keyFab" aria-label="Open demo authenticator"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></svg></button>
+<script src="/totp.js"></script>
+<script src="/mobile.js"></script>
+</body>
+</html>

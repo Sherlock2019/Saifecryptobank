@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "smoke": "node scripts/smoke.mjs",
+    "smoke:mobile": "node scripts/mobile-smoke.mjs",
     "loadtest": "node scripts/loadtest.mjs 500 20"
   },
   "engines": { "node": ">=18" }

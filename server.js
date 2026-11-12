@@ -6,6 +6,7 @@
  * (CloudFront/WAF, EKS pods, Aurora, AZ failover, DR region, MPC signer) is SIMULATED in-process.
  */
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -128,6 +129,8 @@ function seedAccounts() {
   const list = [
     makeAccount('trader-1', 'Demo trader', 'user', { USDT: 250000, BTC: 2.5, ETH: 30, USDC: 50000 },
       { devices: ['macbook-chrome'], ips: ['203.0.113.24'], allowlist: ['bc1q-trader-cold-01', '0xTrader-Ledger-01'] }),
+    makeAccount('cust-1', 'Mobile app customer', 'user', { USDT: 25000, BTC: 0.75, ETH: 6, USDC: 10000 },
+      { devices: [], ips: [], allowlist: [], allowlistEnforced: true }),
     makeAccount('loadtest', 'HTTP load-test client', 'loadbot', { USDT: 50e6, BTC: 400, ETH: 6000 }, { authorizedBot: true }),
     makeAccount('mm-1', 'Market maker (authorized)', 'mm', { USDT: 120e6, BTC: 800, ETH: 12000 }, { authorizedBot: true }),
     makeAccount('acct-alice', 'Alice', 'user', { BTC: 3.2, USDT: 4000 }, { devices: ['iphone-alice'], ips: ['198.51.100.7'] }),
@@ -1203,9 +1206,24 @@ function readBody(req) {
 }
 const DEMO_USERS = new Set(['trader-1', 'loadtest']);
 
-const server = http.createServer(async (req, res) => {
+// Optional TLS (./start.sh --tls generates a self-signed certificate and sets these).
+const TLS = !!(process.env.TLS_CERT && process.env.TLS_KEY);
+// The mobile app is the customer-facing surface: strict CSP (no inline script, no third-party origins).
+const MOBILE_CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+const mobile = require('./mobile-api')({
+  state: () => S, audit, openCase, policyApply, placeOrder, cancelOrder, requestWithdrawal, orderView, wdView, balView, tickerView, usd, readBody, send,
+  tls: TLS, runDir: process.env.SAIFE_RUN_DIR || path.join(__dirname, '.run'),
+});
+
+const handler = async (req, res) => {
   const url = new URL(req.url, 'http://x'); const p = url.pathname; const method = req.method;
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  if (TLS) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
   try {
+    if (p.startsWith('/api/m/')) return await mobile.handle(req, res, url);
     if (p === '/api/stream') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
       res.write('retry: 2000\n\n'); clients.add(res); req.on('close', () => clients.delete(res)); return;
@@ -1248,15 +1266,19 @@ const server = http.createServer(async (req, res) => {
       return send(res, 404, { ok: false, reason: 'NOT_FOUND' });
     }
     // static
-    const rel = p === '/' ? '/index.html' : p === '/ops' ? '/ops.html' : p;
+    const rel = p === '/' ? '/index.html' : p === '/ops' ? '/ops.html' : p === '/mobile' || p === '/m' ? '/mobile.html' : p;
     const file = path.normalize(path.join(PUBLIC, rel));
-    if (!file.startsWith(PUBLIC)) { res.writeHead(403); return res.end(); }
+    if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(403); return res.end(); }
+    if (/^\/(mobile|totp)\.(html|js|css)$/.test(rel)) res.setHeader('Content-Security-Policy', MOBILE_CSP);
     fs.readFile(file, (err, data) => {
       if (err) { res.writeHead(404, { 'Content-Type': 'text/plain' }); return res.end('Not found'); }
       res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' }); res.end(data);
     });
-  } catch (e) { console.error(e); send(res, 500, { ok: false, reason: 'INTERNAL', message: e.message }); }
-});
+  } catch (e) { console.error(e); if (!res.headersSent) send(res, 500, { ok: false, reason: 'INTERNAL', message: 'Internal error' }); }
+};
+const server = TLS
+  ? https.createServer({ cert: fs.readFileSync(process.env.TLS_CERT), key: fs.readFileSync(process.env.TLS_KEY) }, handler)
+  : http.createServer(handler);
 
 resetState();
 setInterval(() => { try { loadTick(); } catch (e) { console.error('load', e); } }, 20);
@@ -1273,4 +1295,4 @@ setInterval(() => { S.infra.lastSnapshot = now(); }, 60000);
 setInterval(() => { for (const c of clients) { try { c.write(': hb\n\n'); } catch { clients.delete(c); } } }, 15000);
 setTimeout(settleSeedPending, 8000);
 
-server.listen(PORT, HOST, () => console.log(`SAIFE Trade POC → http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (ops console: /ops.html, metrics: /metrics)`));
+server.listen(PORT, HOST, () => console.log(`SAIFE Trade POC → ${TLS ? 'https' : 'http'}://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}  (mobile app: /mobile, ops console: /ops.html, metrics: /metrics)`));
