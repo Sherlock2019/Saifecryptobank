@@ -37,14 +37,115 @@ function showNarration(n, currentPage) {
 }
 
 function setupDemoButton(btn) {
-  let running = false;
-  const paint = () => { btn.textContent = running ? '■ Stop demo' : '▶ Run demo'; btn.classList.toggle('running', running); };
+  let running = false; let staging = false;
+  const paint = () => { btn.textContent = running ? '■ Stop demo' : staging ? 'Signing in…' : '▶ Run demo'; btn.classList.toggle('running', running); btn.disabled = staging; };
   btn.onclick = async () => {
     if (running) { await api('POST', '/api/demo/stop'); return; }
+    staging = true; paint();
+    const signedIn = await signInStage();
+    staging = false; paint();
+    if (!signedIn) { toast('Demo cancelled at sign-in', 'warn'); return; }
+    const chip = $('.user-chip'); if (chip) chip.textContent = 'trader-1 · signed in with MFA (mock)';
     const r = await api('POST', '/api/demo/start');
     if (!r.ok) toast(esc(r.message || r.reason), 'bad'); else { running = true; paint(); }
   };
   return { set(v) { running = v; paint(); } };
+}
+
+/* ---------- scripted sign-in stage shown before the guided demo (mockup: no real credentials) ---------- */
+function signInStage() {
+  return new Promise((resolve) => {
+    const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    const rnd = new Uint8Array(20); crypto.getRandomValues(rnd);
+    const secret = [...rnd].map((b) => B32[b & 31]).join('');
+    const T = window.SaifeTOTP;
+    const codeNow = () => (T ? T.code(secret) : String(Math.floor(100000 + Math.random() * 900000)));
+    const secsLeft = () => (T ? T.secondsLeft() : 30 - (Math.floor(Date.now() / 1000) % 30));
+    const ua = navigator.userAgent;
+    const devName = `${/iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android' : /Mac/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'Windows PC' : 'Linux PC'} · ${/Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : 'Safari'}`;
+    const steps = [
+      ['Edge check', 'TLS + AWS WAF rate rule passed'],
+      ['Password', 'scrypt hash, constant-time compare'],
+      ['Device', `${devName}: known device, risk 0/100`],
+      ['MFA', 'TOTP code, one-time use, ±30 s window'],
+      ['Session', 'ID rotated · HttpOnly cookie · CSRF token · 60 s idle lock armed'],
+    ];
+    const ov = document.createElement('div'); ov.id = 'signin';
+    ov.innerHTML = `
+      <div class="si-wrap" role="dialog" aria-modal="true" aria-label="Demo sign-in">
+        <div class="si-tag">Demo stage 0 · Customer sign-in with MFA <span>scripted mockup · demo credentials · no real secrets</span></div>
+        <div class="si-grid">
+          <div class="si-card">
+            <div class="si-brand"><svg width="26" height="26" viewBox="0 0 24 24"><path fill="#fcd535" d="M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z"/></svg>SAIFE<span>TRADE</span></div>
+            <div class="si-pane si-login">
+              <h3>Sign in</h3>
+              <label>Username<input class="si-user" readonly></label>
+              <label>Password<input class="si-pw" readonly></label>
+              <button class="si-btn" tabindex="-1">Sign in</button>
+            </div>
+            <div class="si-pane si-mfa" hidden>
+              <h3>Two-step verification</h3>
+              <p>Enter the 6-digit code from your authenticator app.</p>
+              <div class="si-boxes">${'<span></span>'.repeat(6)}</div>
+              <div class="si-status"></div>
+            </div>
+            <div class="si-pane si-done" hidden>
+              <div class="si-ok">✓</div>
+              <h3>Signed in as trader-1</h3>
+              <p>Password + authenticator code verified. Session locks after 60 s without interaction.</p>
+            </div>
+          </div>
+          <div class="si-side">
+            <div class="si-phone">
+              <div class="si-ph-head">Authenticator</div>
+              <div class="si-ph-acct">SAIFE · trader-1</div>
+              <div class="si-ph-code">––– –––</div>
+              <div class="si-ph-bar"><div></div></div>
+              <div class="si-ph-secs"></div>
+            </div>
+            <ol class="si-steps">${steps.map(([t, d]) => `<li><b>${t}</b><span>${d}</span></li>`).join('')}</ol>
+          </div>
+        </div>
+        <div class="si-foot"><button class="si-skip">Skip ▸▸</button><button class="si-cancel">Cancel</button></div>
+      </div>`;
+    document.body.appendChild(ov);
+    const q = (s) => ov.querySelector(s);
+    let cancelled = false; let skip = false; let done = false;
+    const finish = (v) => { if (done) return; done = true; clearInterval(tick); ov.classList.add('out'); setTimeout(() => ov.remove(), 260); resolve(v); };
+    q('.si-cancel').onclick = () => { cancelled = true; finish(false); };
+    q('.si-skip').onclick = () => { skip = true; };
+    const onKey = (e) => { if (e.key === 'Escape') { document.removeEventListener('keydown', onKey); cancelled = true; finish(false); } };
+    document.addEventListener('keydown', onKey);
+    const paintAuth = () => {
+      const c = codeNow(); const s = secsLeft();
+      q('.si-ph-code').textContent = `${c.slice(0, 3)} ${c.slice(3)}`; q('.si-ph-secs').textContent = `${s} s`;
+      q('.si-ph-bar div').style.width = (s / 30) * 100 + '%';
+    };
+    const tick = setInterval(paintAuth, 250); paintAuth();
+    const wait = async (ms) => { const end = Date.now() + ms; while (Date.now() < end) { if (cancelled) throw new Error('cancel'); if (skip) return; await new Promise((r) => setTimeout(r, 30)); } };
+    const type = async (el, text, mask) => { el.value = ''; for (const ch of text) { if (skip) break; el.value += mask ? '•' : ch; await wait(mask ? 55 : 80); } el.value = mask ? '•'.repeat(text.length) : text; };
+    const li = [...ov.querySelectorAll('.si-steps li')];
+    const mark = async (i, ms = 450) => { li[i].className = 'on'; await wait(ms); li[i].className = 'done'; };
+    const show = (cls) => { for (const p of ov.querySelectorAll('.si-pane')) p.hidden = !p.classList.contains(cls); };
+    (async () => {
+      try {
+        await wait(350); await mark(0, 400);
+        await type(q('.si-user'), 'trader-1');
+        await type(q('.si-pw'), 'demo-password-01', true);
+        q('.si-btn').classList.add('press'); await wait(350);
+        await mark(1, 500); await mark(2, 500);
+        show('si-mfa'); li[3].className = 'on'; q('.si-phone').classList.add('hot'); await wait(700);
+        const code = codeNow(); const boxes = [...ov.querySelectorAll('.si-boxes span')];
+        for (let i = 0; i < 6; i++) { boxes[i].textContent = code[i]; boxes[i].className = 'f'; await wait(160); }
+        q('.si-status').textContent = 'Verifying…'; await wait(550);
+        q('.si-status').textContent = '✓ Code accepted'; q('.si-status').className = 'si-status ok'; li[3].className = 'done'; q('.si-phone').classList.remove('hot');
+        await wait(350); await mark(4, 500);
+        show('si-done'); for (const l of li) l.className = 'done';
+        await (skip ? new Promise((r) => setTimeout(r, 500)) : wait(1300));
+        document.removeEventListener('keydown', onKey); finish(true);
+      } catch { /* cancelled */ }
+    })();
+  });
 }
 
 /* ---------- canvas helpers ---------- */
