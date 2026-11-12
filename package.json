@@ -1,0 +1,12 @@
+{
+  "name": "saife-trade-poc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "POC of the SAFE AWS Trading Platform scope: exchange UI, simulated backend, AI Sentinel and hot-wallet controls (mock data, no dependencies)",
+  "scripts": {
+    "start": "node server.js",
+    "smoke": "node scripts/smoke.mjs",
+    "loadtest": "node scripts/loadtest.mjs 500 20"
+  },
+  "engines": { "node": ">=18" }
+}

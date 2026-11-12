@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAIFE Ops Console</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23b26bff' d='M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z'/></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="#fcd535" d="M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z"/></svg>SAIFE<span>OPS</span></div>
+  <nav><a href="/">Spot</a><a href="/ops.html" class="active">Ops Console</a><a href="/metrics" target="_blank">/metrics</a></nav>
+  <div class="spacer"></div>
+  <span class="pill" id="guardPill"><span class="dot"></span><span>AI Sentinel · watching</span></span>
+  <button class="btn-demo" id="demoBtn">▶ Run demo</button>
+  <button class="btn" id="resetBtn" title="Reset simulation state">Reset</button>
+</header>
+<div class="simbar">SIMULATED BACKEND · AWS services are modeled in-process · dashboards render this POC's live Prometheus-format metrics</div>
+<div class="ops-tabs" id="tabs">
+  <button data-p="arch" class="active">Architecture</button>
+  <button data-p="grafana">Grafana</button>
+  <button data-p="attack">Attack Lab · AI Sentinel</button>
+  <button data-p="wallets">Hot Wallets &amp; Custody</button>
+  <button data-p="chaos">Chaos &amp; DR</button>
+  <button data-p="audit">Audit log</button>
+</div>
+<div class="strip" id="strip"></div>
+
+<!-- ARCHITECTURE -->
+<section class="page active" id="p-arch">
+  <div class="arch-wrap">
+    <div class="card arch"><h3>Live architecture · AWS Trading Platform: EKS + AI Sentinel + DR <span class="muted" style="font-weight:400">click a component</span></h3>
+      <div class="body"><svg id="archSvg" viewBox="0 0 1240 750"></svg>
+        <div class="legend"><span><i style="border-color:rgba(14,203,129,.6)"></i>healthy</span><span><i style="border-color:#ff9f43"></i>degraded / paused</span><span><i style="border-color:#f6465d"></i>down</span><span><i style="border-color:#b26bff"></i>involved in running attack / Sentinel action</span><span>dashed arrows = live request & event flow</span></div>
+      </div>
+    </div>
+    <div class="card detail"><h3>Component</h3><div class="body" id="archDetail"></div></div>
+  </div>
+  <h2 class="sec">Service choices &amp; alternatives considered</h2>
+  <div class="card"><div class="tblwrap" style="max-height:none"><table class="t" id="svcTable"></table></div></div>
+  <h2 class="sec">Scaling plan beyond the initial setup</h2>
+  <div class="card"><div class="tblwrap" style="max-height:none"><table class="t" id="scaleTable"></table></div></div>
+</section>
+
+<!-- GRAFANA -->
+<section class="page" id="p-grafana">
+  <div class="gf-head"><span class="title">▦ SAIFE / Trading platform overview</span><span class="chip">Last 5 minutes</span><span class="chip">refresh 1s</span><span class="note">Styled after Grafana. Panels render the same series exposed at <a href="/metrics" target="_blank">/metrics</a> (Prometheus text format). Latency = measured handler time + modeled AWS hop latency.</span></div>
+  <div class="gf" id="gf"></div>
+</section>
+
+<!-- ATTACK LAB -->
+<section class="page" id="p-attack">
+  <div class="lab">
+    <div class="card"><h3>Attack scenarios <span class="muted" style="font-weight:400">simulated</span></h3><div id="scnList"></div></div>
+    <div class="card"><h3 id="tlHead">Live timeline</h3><div id="tlOutcome"></div><div class="timeline" id="timeline"><div class="empty">Run a scenario to watch the attacker, guardrails, WAF, AI Sentinel and the policy service interact.</div></div></div>
+    <div class="card"><h3>AI Sentinel · human review queue</h3>
+      <div class="body" style="padding:8px 14px;border-bottom:1px solid var(--line)"><div class="note" id="sentMeta"></div></div>
+      <div id="cases" style="max-height:640px;overflow:auto"></div></div>
+  </div>
+  <h2 class="sec">Withdrawal screening (all accounts)</h2>
+  <div class="card"><div class="tblwrap" id="wdTable"></div></div>
+</section>
+
+<!-- WALLETS -->
+<section class="page" id="p-wallets">
+  <p class="note" style="margin-top:0">Each asset/network has its own hot compartment with an independent cap. Target = clamp(forecast + fees + 25% buffer, min, cap). Top-ups and sweeps need two independent human approvals, then a <b>mock</b> MPC signer checks policy. The AI Sentinel can pause a compartment but can never sign or move funds.</p>
+  <div class="wgrid" id="wcards"></div>
+  <h2 class="sec">Treasury approvals (dual control)</h2>
+  <div class="card"><div class="tblwrap" id="approvals"></div></div>
+  <h2 class="sec">Dynamic top-up calculator</h2>
+  <div class="card"><div class="body">
+    <div class="calc">
+      <div><label>Hot balance</label><input id="cHot" value="0.40"></div>
+      <div><label>Confirmed pending</label><input id="cPend" value="0.10"></div>
+      <div><label>Forecast withdrawals (1h)</label><input id="cFc" value="0.60"></div>
+      <div><label>Network fees</label><input id="cFee" value="0.05"></div>
+      <div><label>Approved buffer</label><input id="cBuf" value="0.20"></div>
+      <div><label>Cap</label><input id="cCap" value="10"></div>
+    </div>
+    <p style="margin:14px 0 4px">Target = <span class="num" id="cTarget"></span> · Proposed top-up = max(0, target − hot − pending) = <span class="bigres" id="cTop"></span></p>
+    <p class="note">Default values reproduce the scope document example: 0.40 BTC hot, 0.10 BTC pending, target 0.85 BTC → top-up 0.35 BTC.</p>
+  </div></div>
+</section>
+
+<!-- CHAOS -->
+<section class="page" id="p-chaos">
+  <div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+    <div class="card"><h3>Load generator</h3><div class="body">
+      <p class="note" style="margin-top:0">Synthetic workload: 42% passive limit orders, 30% cancels, 16% IOC takers, 12% depth reads. It runs through the real engine code path in-process. For a real HTTP measurement, use <code>node scripts/loadtest.mjs</code>.</p>
+      <div style="display:flex;gap:10px;align-items:center"><input type="range" id="rps" min="0" max="1000" step="10"><span class="num" id="rpsV" style="min-width:70px"></span></div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><button class="btn sm" data-rps="0">Idle</button><button class="btn sm" data-rps="60">60 rps</button><button class="btn sm y" data-rps="500">500 rps (target)</button><button class="btn sm" data-rps="1000">1,000 rps (growth)</button></div>
+    </div></div>
+    <div class="card"><h3>Matching leases (fencing)</h3><div class="body" id="leases"></div></div>
+    <div class="card"><h3>Data tier</h3><div class="body" id="datatier"></div></div>
+  </div>
+  <h2 class="sec">Availability Zones · ap-southeast-1</h2>
+  <div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))" id="azs"></div>
+  <h2 class="sec">Regional disaster recovery drill</h2>
+  <div class="cols" style="grid-template-columns:repeat(auto-fit,minmax(340px,1fr))">
+    <div class="card"><h3>Backup &amp; restore to ap-northeast-1 <button class="btn sm y" id="drBtn" style="margin-left:auto">Run DR drill</button></h3><div class="body" id="dr"></div></div>
+    <div class="card"><h3>Infrastructure events</h3><div class="body log" id="infraLog"></div></div>
+  </div>
+</section>
+
+<!-- AUDIT -->
+<section class="page" id="p-audit">
+  <div style="display:flex;gap:10px;margin-bottom:10px"><input id="auditQ" placeholder="filter actor / action / target / decision…" style="max-width:360px"><span class="note" style="align-self:center">Every automated and human decision is recorded with actor, policy version, correlation id and decision (TR-08).</span></div>
+  <div class="card"><div class="tblwrap" style="max-height:70vh" id="auditTbl"></div></div>
+</section>
+
+<div id="toasts"></div>
+<script src="/common.js"></script>
+<script src="/ops.js"></script>
+</body>
+</html>

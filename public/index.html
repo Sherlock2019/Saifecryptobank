@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAIFE Trade · Spot</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23fcd535' d='M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z'/></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24"><path fill="#fcd535" d="M12 2l4 4-4 4-4-4zM4 10l4 4-4 4-4-4zM20 10l4 4-4 4-4-4zM12 14l4 4-4 4-4-4z"/></svg>SAIFE<span>TRADE</span></div>
+  <nav><a href="#" class="active">Spot</a><a href="#wallet">Wallet</a><a href="/ops.html">Ops Console</a></nav>
+  <div class="spacer"></div>
+  <span class="pill" id="sloPill"><span class="dot"></span><span>p99 – ms · – req/s</span></span>
+  <span class="pill" id="guardPill"><span class="dot"></span><span>AI Sentinel · watching</span></span>
+  <button class="btn-demo" id="demoBtn">▶ Run demo</button>
+  <a class="btn" href="/ops.html">Backend ↗</a>
+  <span class="user-chip">trader-1 · Cognito session (mock)</span>
+</header>
+<div class="simbar">SIMULATION · mock market data · testnet-style wallets · no real funds, keys or exchange connectivity</div>
+
+<section class="ticker">
+  <div class="pairs" id="pairs"><button data-s="BTCUSDT" class="active">BTC/USDT</button><button data-s="ETHUSDT">ETH/USDT</button></div>
+  <div class="tk-last num" id="tkLast">–</div>
+  <div class="tk-item"><span class="l">24h Change</span><span class="num" id="tkChg">–</span></div>
+  <div class="tk-item"><span class="l">24h High</span><span class="num" id="tkHigh">–</span></div>
+  <div class="tk-item"><span class="l">24h Low</span><span class="num" id="tkLow">–</span></div>
+  <div class="tk-item"><span class="l">24h Volume</span><span class="num" id="tkVol">–</span></div>
+  <div class="tk-item"><span class="l">Market</span><span id="tkStatus" class="up">Trading</span></div>
+  <div class="tk-item"><span class="l">Matching owner</span><span class="num" id="tkOwner">–</span></div>
+</section>
+
+<main class="grid">
+  <section class="panel book">
+    <h3>Order Book <span class="muted" style="font-weight:400;font-size:11px">aggregated · live</span></h3>
+    <div class="hdr3"><span>Price (USDT)</span><span id="bkQ">Amount (BTC)</span><span>Total</span></div>
+    <div class="asks rows" id="asks"></div>
+    <div class="mid"><span class="num" id="midPrice">–</span><span class="muted num" style="font-size:12px" id="spread"></span></div>
+    <div class="bids rows" id="bids"></div>
+  </section>
+
+  <section class="panel chart">
+    <h3>Chart · 5s candles <span class="ohlc" id="ohlc"></span></h3>
+    <div class="chart-wrap"><canvas id="cv"></canvas></div>
+  </section>
+
+  <section class="panel trades">
+    <h3>Market Trades</h3>
+    <div class="hdr3"><span>Price (USDT)</span><span>Amount</span><span>Time</span></div>
+    <div class="tradelist rows" id="tradeList"></div>
+  </section>
+
+  <section class="panel form">
+    <div class="tabs" id="otype"><button data-t="LIMIT" class="active">Limit</button><button data-t="MARKET">Market</button></div>
+    <div id="holdBanner" style="padding:8px 14px 0;display:none"></div>
+    <div class="form-body">
+      <div>
+        <div class="avbl"><span>Avbl</span><span class="num" id="avQuote">–</span></div>
+        <div class="field lim"><label>Price</label><input id="bPrice" inputmode="decimal"><span class="unit">USDT</span></div>
+        <div class="field"><label>Amount</label><input id="bQty" inputmode="decimal" value="0.01"><span class="unit bU">BTC</span></div>
+        <div class="pct" data-side="BUY"><button>25%</button><button>50%</button><button>75%</button><button>100%</button></div>
+        <div class="avbl"><span>Total</span><span class="num" id="bTot">–</span></div>
+        <button class="buy-btn" id="buyBtn">Buy BTC</button>
+      </div>
+      <div>
+        <div class="avbl"><span>Avbl</span><span class="num" id="avBase">–</span></div>
+        <div class="field lim"><label>Price</label><input id="sPrice" inputmode="decimal"><span class="unit">USDT</span></div>
+        <div class="field"><label>Amount</label><input id="sQty" inputmode="decimal" value="0.01"><span class="unit bU">BTC</span></div>
+        <div class="pct" data-side="SELL"><button>25%</button><button>50%</button><button>75%</button><button>100%</button></div>
+        <div class="avbl"><span>Total</span><span class="num" id="sTot">–</span></div>
+        <button class="sell-btn" id="sellBtn">Sell BTC</button>
+      </div>
+    </div>
+    <div style="padding:0 14px 12px">
+      <label class="chk"><input type="checkbox" id="retryChk"> Simulate a network retry (send the same <code>clientOrderId</code> twice; idempotency check)</label>
+    </div>
+  </section>
+
+  <section class="panel wallet" id="wallet">
+    <div class="tabs" id="wtabs"><button data-w="wd" class="active">Withdraw</button><button data-w="dep">Deposit (testnet)</button></div>
+    <div class="wallet-body" id="wdPane">
+      <div id="stepUpBox"></div>
+      <div class="lbl">Asset</div>
+      <select id="wdAsset"><option>BTC</option><option>ETH</option><option>USDC</option></select>
+      <div class="lbl">Amount <span class="muted" id="wdAv"></span></div>
+      <input id="wdAmt" value="0.1" inputmode="decimal">
+      <div class="lbl">Destination</div>
+      <select id="wdAddr"></select>
+      <input id="wdCustom" placeholder="new address…" style="margin-top:6px;display:none">
+      <div class="lbl">Signing in from</div>
+      <select id="wdDev"><option value="macbook-chrome">This MacBook · Chrome (known device)</option><option value="android-new-5521">Unrecognised Android device (new IP)</option></select>
+      <button class="btn y" style="width:100%;margin-top:10px;padding:9px" id="wdBtn">Request withdrawal</button>
+      <div class="chips" id="compChips"></div>
+    </div>
+    <div class="wallet-body" id="depPane" style="display:none">
+      <div class="lbl">Asset</div>
+      <select id="depAsset"><option>BTC</option><option>ETH</option><option>USDC</option></select>
+      <div class="lbl">Amount</div>
+      <input id="depAmt" value="0.5" inputmode="decimal">
+      <button class="btn g" style="width:100%;margin-top:10px;padding:9px" id="depBtn">Simulate confirmed deposit</button>
+      <p class="note">Credits your balance, the double-entry ledger and the simulated hot wallet together.</p>
+    </div>
+  </section>
+
+  <section class="panel bottom">
+    <div class="tabs" id="btabs">
+      <button data-b="open" class="active">Open Orders</button><button data-b="hist">Order History</button><button data-b="bal">Balances</button><button data-b="ledger">Ledger</button><button data-b="wds">Withdrawals</button>
+    </div>
+    <div class="tblwrap" id="bottomBody"></div>
+  </section>
+</main>
+<div id="toasts"></div>
+<script src="/common.js"></script>
+<script src="/trade.js"></script>
+</body>
+</html>
